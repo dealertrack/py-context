@@ -5,7 +5,7 @@ import os
 
 from setuptools import find_packages, setup
 
-from pycontext import __author__, __description__, __version__
+from pycontext import __author__, __author_email__, __description__, __version__
 
 
 def read(fname):
@@ -31,6 +31,7 @@ setup(
     name='py-context',
     version=__version__,
     author=__author__,
+    author_email=__author_email__,
     description=__description__,
     long_description='\n\n'.join([readme, history, authors, licence]),
     url='https://github.com/dealertrack/py-context',
