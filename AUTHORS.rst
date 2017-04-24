@@ -1,6 +1,9 @@
 Credits
 -------
 
+Originally ``Context`` was taken from `Genshi <https://genshi.edgewall.org/>`_ project.
+See ``LICENSE`` for copyright notices.
+
 Development Lead
 ~~~~~~~~~~~~~~~~
 
