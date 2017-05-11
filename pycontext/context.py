@@ -155,9 +155,9 @@ class Context(Mapping):
         :param key: the name of the variable
         :param value: the variable value
         """
-        try:
+        if key in self.__slots__:
             super(Context, self).__setattr__(key, value)
-        except AttributeError:
+        else:
             self.__setitem__(key, value)
 
     def __eq__(self, other):
