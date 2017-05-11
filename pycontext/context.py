@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 from __future__ import absolute_import, print_function, unicode_literals
+
+import copy
 from collections import Mapping, deque
-from copy import deepcopy
 from itertools import chain
 
 
@@ -49,6 +50,8 @@ class Context(Mapping):
     >>> assert ctxt.pop() == {'user': 'Barney'}
     >>> assert ctxt['user'] == 'Fred'
     """
+
+    __slots__ = ('frames',)
 
     def __init__(self, context_data=None, **kwargs):
         """
@@ -109,6 +112,21 @@ class Context(Mapping):
             raise KeyError(key)
         return value
 
+    def __getattr__(self, key):
+        """
+        Get attribute's value, starting at the current scope and going upward.
+
+        :param key: the name of the attribute
+        :param value: the variable value
+        """
+        try:
+            super(Context, self).__getattr__(key)
+        except AttributeError:
+            value, frame = self._find(key)
+            if frame is not None:
+                return value
+            raise
+
     def __len__(self):
         """
         Return the number of keys in the context.
@@ -129,6 +147,18 @@ class Context(Mapping):
         :param value: the variable value
         """
         self.frames[0][key] = value
+
+    def __setattr__(self, key, value):
+        """
+        Set an attribute in the current scope.
+
+        :param key: the name of the variable
+        :param value: the variable value
+        """
+        try:
+            super(Context, self).__setattr__(key, value)
+        except AttributeError:
+            self.__setitem__(key, value)
 
     def __eq__(self, other):
         """
@@ -189,12 +219,15 @@ class Context(Mapping):
         # that ensures that copy of correct subclass is created
         new_context = self.__class__()
 
-        # need to loop over the vars to copy all
-        # class attributes including possibly added by subclasses
-        for attr, value in vars(self).items():
-            if callable(getattr(self, attr)):
-                continue
-            setattr(new_context, attr, deepcopy(getattr(self, attr), memo))
+        # pop as we we insert a frame by default
+        new_context.frames.popleft()
+
+        # need to loop over frame by frame in reverse order and
+        # copy all attributes in a frame to the new context
+        for frame in reversed(self.frames):
+            new_context.frames.appendleft({
+                attr: copy.deepcopy(value) for attr, value in frame.items() if not callable(value)
+            })
 
         return new_context
 

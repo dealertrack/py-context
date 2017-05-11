@@ -256,6 +256,20 @@ class TestContext(unittest.TestCase):
             sorted(['qwe', 'foo', 'hello']),
         )
 
+    def test_attributes(self):
+        """
+        Test attribute functionality
+        """
+        self.context.hello = 'world'
+        self.context.push({'foo': 'bar'})
+        self.context.push({'qwe': 'asd'})
+        self.assertEqual(self.context.foo, 'bar')
+        self.assertEqual(self.context.hello, 'world')
+        self.assertEqual(self.context.qwe, 'asd')
+
+        with self.assertRaises(AttributeError):
+            self.context.bar
+
     def test_values(self):
         """
         Test values functionality
