@@ -265,6 +265,7 @@ class TestContext(unittest.TestCase):
         self.context.push({'qwe': 'asd'})
         self.assertEqual(self.context.foo, 'bar')
         self.assertEqual(self.context.hello, 'world')
+        self.assertEqual(self.context['hello'], 'world')
         self.assertEqual(self.context.qwe, 'asd')
 
         with self.assertRaises(AttributeError):
