@@ -7,7 +7,6 @@ History
 ~~~~~~~~~~~~~~~~~~
 
 * Add attribute support
-
 * Add make watch target
 
 0.1.0 (2017-03-22)
