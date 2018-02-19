@@ -47,7 +47,7 @@ Context also supports signals.
 Signal handler can be attached globally::
 
     >>> @context_key_changed.connect
-    ... def handler(context, key, new, old):
+    ... def handler(sender, context, key, new, old):
     ...     print(key, new, old)
 
     >>> context = Context()
@@ -56,7 +56,7 @@ Signal handler can be attached globally::
 
 Or to individual context instances::
 
-    >>> def handler(context, key, new, old):
+    >>> def handler(sender, context, key, new, old):
     ...     print(key, new, old)
     >>> context = Context()
     >>> context_key_changed.connect(handler, sender=context)
@@ -64,20 +64,36 @@ Or to individual context instances::
 Supported signals::
 
     >>> @context_initialized.connect
-    ... def handler(context):
+    ... def handler(sender, context):
     ...     pass
 
     >>> @pre_context_changed.connect
-    ... def handler(context):
+    ... def handler(sender, context):
     ...     pass
 
     >>> @post_context_changed.connect
-    ... def handler(context):
+    ... def handler(sender, context):
     ...     pass
 
     >>> @context_key_changed.connect
-    ... def handler(context, key, new, old):
+    ... def handler(sender, context, key, new, old):
     ...     pass
+
+Additionally, ``ClassSignallingContext`` can be used to subscribe signals
+by sender classes, not instances::
+
+    >>> class TestContext(ClassSignallingContext):
+    ...     pass
+    >>> def context_key_changed_handler(sender, context, key, new, old):
+    ...     print(key, new, old)
+    >>> _ = context_key_changed.connect(context_key_changed_handler, sender=TestContext)
+
+    >>> context = Context()
+    >>> class_context = TestContext()
+
+    >>> context['foo'] = 'bar'
+    >>> class_context['foo'] = 'bar'
+    foo bar <Missing>
 
 Testing
 -------

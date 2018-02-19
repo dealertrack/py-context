@@ -94,11 +94,11 @@ class Context(Mapping):
 
     Signals are also supported:
 
-    >>> def pre(context):
+    >>> def pre(sender, context):
     ...     print('pre')
-    >>> def post(context):
+    >>> def post(sender, context):
     ...     print('post')
-    >>> def changed(context, key, new, old):
+    >>> def changed(sender, context, key, new, old):
     ...     print(key, new, old)
     >>> _ = pre_context_changed.connect(pre, sender=context)
     >>> _ = post_context_changed.connect(post, sender=context)
@@ -316,17 +316,17 @@ class Context(Mapping):
         return default, None
 
     def _send_initialized_signal(self):
-        context_initialized.send(self)
+        context_initialized.send(self, context=self)
 
     def _send_pre_changed_signal(self):
-        pre_context_changed.send(self)
+        pre_context_changed.send(self, context=self)
 
     def _send_post_changed_signal(self):
-        post_context_changed.send(self)
+        post_context_changed.send(self, context=self)
 
     def _send_changed_key_signal(self, key, new, old):
         if old != new:
-            context_key_changed.send(self, key=key, new=new, old=old)
+            context_key_changed.send(self, context=self, key=key, new=new, old=old)
 
     @contextmanager
     def _with_changed_keys(self, *args):
@@ -425,7 +425,7 @@ class Context(Mapping):
         """
         Update the context from the mapping provided.
         """
-        with self._with_changed_keys(*chain(*(i.items() for i in args), kwargs.items())):
+        with self._with_changed_keys(*chain(kwargs.items(), *(i.items() for i in args))):
             self.frames[0].update(*args, **kwargs)
 
     def push(self, data):
@@ -468,3 +468,36 @@ class Context(Mapping):
                 self._send_changed_key_signal(k, self.get(k, MISSING), v)
 
             self._send_post_changed_signal()
+
+
+class ClassSignallingContext(Context):
+    """
+    Same as ``Context`` except signal sender is a class, not an instance.
+
+    Useful to connect signals to a ``Context`` subclass.
+
+    >>> class TestContext(ClassSignallingContext):
+    ...     pass
+    >>> def context_key_changed_handler(sender, context, key, new, old):
+    ...     print(key, new, old)
+    >>> _ = context_key_changed.connect(context_key_changed_handler, sender=TestContext)
+
+    >>> context = Context()
+    >>> class_context = TestContext()
+
+    >>> context['foo'] = 'bar'
+    >>> class_context['foo'] = 'bar'
+    foo bar <Missing>
+    """
+    def _send_initialized_signal(self):
+        context_initialized.send(self.__class__, context=self)
+
+    def _send_pre_changed_signal(self):
+        pre_context_changed.send(self.__class__, context=self)
+
+    def _send_post_changed_signal(self):
+        post_context_changed.send(self.__class__, context=self)
+
+    def _send_changed_key_signal(self, key, new, old):
+        if old != new:
+            context_key_changed.send(self.__class__, context=self, key=key, new=new, old=old)

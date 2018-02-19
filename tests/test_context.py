@@ -427,15 +427,15 @@ class TestContext(unittest.TestCase):
     def _check_signals(self, k='foo', o=MISSING, n='bar', i=None):
         context = Context(i or {})
 
-        def pre(c):
+        def pre(sender, context):
             op = self.assertNotIn if o == MISSING else self.assertIn
-            op(k, c)
+            op(k, context)
 
-        def post(c):
+        def post(sender, context):
             op = self.assertIn if o == MISSING else self.assertNotIn
-            op(k, c)
+            op(k, context)
 
-        def change(c, key, new, old):
+        def change(sender, context, key, new, old):
             self.assertEqual(key, k)
             self.assertEqual(new, n)
             self.assertEqual(old, o)
