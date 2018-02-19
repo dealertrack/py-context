@@ -2,7 +2,50 @@
 from __future__ import absolute_import, print_function, unicode_literals
 import copy
 from collections import Mapping, deque
+from contextlib import contextmanager
 from itertools import chain
+
+import six
+
+from .signals import (
+    context_initialized,
+    context_key_changed,
+    post_context_changed,
+    pre_context_changed,
+)
+
+
+@six.python_2_unicode_compatible
+class Missing(object):
+    """
+    Helper object to distinguish missing keys from falsy keys.
+
+    >>> def foo(a=MISSING):
+    ...     print(a, bool(a))
+    >>> foo()
+    <Missing> False
+    >>> foo('Yes')
+    Yes True
+    """
+    def __bool__(self):
+        return False
+
+    __nonzero__ = __bool__
+
+    def __eq__(self, other):
+        return isinstance(other, Missing)
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
+    def __repr__(self):
+        return '<Missing>'
+
+    def __str__(self):
+        return self.__repr__()
+
+
+MISSING = Missing()
 
 
 class ContextPushPopContextManager(object):
@@ -40,14 +83,39 @@ class Context(Mapping):
     data that should only be available inside clause. When the statement
     terminates, that scope can get popped off the stack again.
 
-    >>> ctxt = Context({"user": "Fred", "city": "Bedrock"})
-    >>> assert ctxt['user'] == 'Fred'
-    >>> assert ctxt['city'] == 'Bedrock'
-    >>> assert isinstance(ctxt.push({"user": "Barney"}), ContextPushPopContextManager)
-    >>> assert ctxt['user'] == 'Barney'
-    >>> assert ctxt['city'] == 'Bedrock'
-    >>> assert ctxt.pop() == {'user': 'Barney'}
-    >>> assert ctxt['user'] == 'Fred'
+    >>> context = Context({"user": "Fred", "city": "Bedrock"})
+    >>> assert context['user'] == 'Fred'
+    >>> assert context['city'] == 'Bedrock'
+    >>> assert isinstance(context.push({"user": "Barney"}), ContextPushPopContextManager)
+    >>> assert context['user'] == 'Barney'
+    >>> assert context['city'] == 'Bedrock'
+    >>> assert context.pop() == {'user': 'Barney'}
+    >>> assert context['user'] == 'Fred'
+
+    Signals are also supported:
+
+    >>> def pre(sender, context):
+    ...     print('pre')
+    >>> def post(sender, context):
+    ...     print('post')
+    >>> def changed(sender, context, key, new, old):
+    ...     print(key, new, old)
+    >>> _ = pre_context_changed.connect(pre, sender=context)
+    >>> _ = post_context_changed.connect(post, sender=context)
+    >>> _ = context_key_changed.connect(changed, sender=context)
+
+    >>> context['foo'] = 'bar'
+    pre
+    foo bar <Missing>
+    post
+    >>> context.update({'foo': 'haha'})
+    pre
+    foo haha bar
+    post
+    >>> # only changes are signalled for context_key_changed
+    >>> _ = context.push({'foo': 'haha'})
+    pre
+    post
     """
 
     __slots__ = ('frames',)
@@ -65,6 +133,7 @@ class Context(Mapping):
         context.update(context_data)
 
         self.frames = deque([context])
+        self._send_initialized_signal()
 
     def _get_base_context(self):
         """
@@ -145,7 +214,8 @@ class Context(Mapping):
         :param key: the name of the variable
         :param value: the variable value
         """
-        self.frames[0][key] = value
+        with self._with_changed_keys((key, value)):
+            self.frames[0][key] = value
 
     def __setattr__(self, key, value):
         """
@@ -245,6 +315,29 @@ class Context(Mapping):
                 return frame[key], frame
         return default, None
 
+    def _send_initialized_signal(self):
+        context_initialized.send(self, context=self)
+
+    def _send_pre_changed_signal(self):
+        pre_context_changed.send(self, context=self)
+
+    def _send_post_changed_signal(self):
+        post_context_changed.send(self, context=self)
+
+    def _send_changed_key_signal(self, key, new, old):
+        if old != new:
+            context_key_changed.send(self, context=self, key=key, new=new, old=old)
+
+    @contextmanager
+    def _with_changed_keys(self, *args):
+        self._send_pre_changed_signal()
+        for k, v in args:
+            self._send_changed_key_signal(k, v, self.get(k, MISSING))
+
+        yield
+
+        self._send_post_changed_signal()
+
     def setdefault(self, key, default):
         """
         Same as dict's setdefault implementation.
@@ -253,7 +346,8 @@ class Context(Mapping):
         to default and return default value.
         """
         if key not in self:
-            self[key] = default
+            with self._with_changed_keys((key, default)):
+                self[key] = default
 
         return self[key]
 
@@ -327,11 +421,12 @@ class Context(Mapping):
         """
         return self.__copy__()
 
-    def update(self, mapping=None, **kwargs):
+    def update(self, *args, **kwargs):
         """
         Update the context from the mapping provided.
         """
-        self.frames[0].update(mapping, **kwargs)
+        with self._with_changed_keys(*chain(kwargs.items(), *(i.items() for i in args))):
+            self.frames[0].update(*args, **kwargs)
 
     def push(self, data):
         """
@@ -350,7 +445,11 @@ class Context(Mapping):
         # For simplicity need to normalize the data to dict
         # since otherwise data can be another context
         # which will cause undesired recursion
-        self.frames.appendleft(dict(data))
+        data = dict(data)
+
+        with self._with_changed_keys(*data.items()):
+            self.frames.appendleft(data)
+
         return ContextPushPopContextManager(self)
 
     def pop(self):
@@ -359,4 +458,46 @@ class Context(Mapping):
 
         :return: the frame popped from frames
         """
-        return self.frames.popleft()
+        self._send_pre_changed_signal()
+
+        try:
+            popped = self.frames.popleft()
+            return popped
+        finally:
+            for k, v in popped.items():
+                self._send_changed_key_signal(k, self.get(k, MISSING), v)
+
+            self._send_post_changed_signal()
+
+
+class ClassSignallingContext(Context):
+    """
+    Same as ``Context`` except signal sender is a class, not an instance.
+
+    Useful to connect signals to a ``Context`` subclass.
+
+    >>> class TestContext(ClassSignallingContext):
+    ...     pass
+    >>> def context_key_changed_handler(sender, context, key, new, old):
+    ...     print(key, new, old)
+    >>> _ = context_key_changed.connect(context_key_changed_handler, sender=TestContext)
+
+    >>> context = Context()
+    >>> class_context = TestContext()
+
+    >>> context['foo'] = 'bar'
+    >>> class_context['foo'] = 'bar'
+    foo bar <Missing>
+    """
+    def _send_initialized_signal(self):
+        context_initialized.send(self.__class__, context=self)
+
+    def _send_pre_changed_signal(self):
+        pre_context_changed.send(self.__class__, context=self)
+
+    def _send_post_changed_signal(self):
+        post_context_changed.send(self.__class__, context=self)
+
+    def _send_changed_key_signal(self, key, new, old):
+        if old != new:
+            context_key_changed.send(self.__class__, context=self, key=key, new=new, old=old)

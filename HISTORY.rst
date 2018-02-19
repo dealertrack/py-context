@@ -3,6 +3,12 @@
 History
 -------
 
+0.3.0 (2018-02-16)
+~~~~~~~~~~~~~~~~~~
+
+* Added signals support - ``context_initialized``, ``pre_context_changed``,
+  ``post_context_changed`` and ``context_key_changed``. See README for examples.
+
 0.2.1 (2017-07-28)
 ~~~~~~~~~~~~~~~~~~
 

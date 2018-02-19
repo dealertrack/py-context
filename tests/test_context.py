@@ -6,7 +6,12 @@ from collections import deque
 
 import mock
 
-from pycontext.context import Context
+from pycontext.context import MISSING, Context
+from pycontext.signals import (
+    context_key_changed,
+    post_context_changed,
+    pre_context_changed,
+)
 
 
 class TestContext(unittest.TestCase):
@@ -418,3 +423,45 @@ class TestContext(unittest.TestCase):
     def test_recursion(self):
         with self.assertRaises(ValueError):
             self.context.push(self.context)
+
+    def _check_signals(self, k='foo', o=MISSING, n='bar', i=None):
+        context = Context(i or {})
+
+        def pre(sender, context):
+            op = self.assertNotIn if o == MISSING else self.assertIn
+            op(k, context)
+
+        def post(sender, context):
+            op = self.assertIn if o == MISSING else self.assertNotIn
+            op(k, context)
+
+        def change(sender, context, key, new, old):
+            self.assertEqual(key, k)
+            self.assertEqual(new, n)
+            self.assertEqual(old, o)
+
+        pre_context_changed.connect(pre, sender=context)
+        post_context_changed.connect(post, sender=context)
+        context_key_changed.connect(change, sender=context)
+
+        return context, pre, post, change
+
+    def test_signals_setitem(self):
+        context, pre, post, change = self._check_signals()
+        context['foo'] = 'bar'
+
+    def test_signals_setdefault(self):
+        context, pre, post, change = self._check_signals()
+        context.setdefault('foo', 'bar')
+
+    def test_signals_update(self):
+        context, pre, post, change = self._check_signals()
+        context.update(foo='bar')
+
+    def test_signals_push(self):
+        context, pre, post, change = self._check_signals()
+        context.push({'foo': 'bar'})
+
+    def test_signals_pop(self):
+        context, pre, post, change = self._check_signals(i={'foo': 'bar'}, n=MISSING, o='bar')
+        self.assertEqual(context.pop(), {'foo': 'bar'})
