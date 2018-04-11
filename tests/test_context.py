@@ -58,6 +58,14 @@ class TestContext(unittest.TestCase):
             '_get_base_context should return empty dict'
         )
 
+    def test_dir(self):
+        """
+        Test that __dir__ returns all keys
+        """
+        context = Context({'foo': 'foo', 'bar': 'bar'})
+        for k in ['foo', 'bar', 'push']:
+            self.assertIn(k, dir(context))
+
     def test_repr(self):
         """
         Test that __repr__ returns representation of all frames
@@ -402,12 +410,12 @@ class TestContext(unittest.TestCase):
 
     def test_push_pop(self):
         context = Context({'hello': 'world'})
-        context.push({'hello': 'mars'})
+        context.push({'hello': 'mars'}, foo='bar')
 
         self.context.push(context)
         inserted = self.context.pop()
 
-        self.assertEqual(inserted, {'hello': 'mars'})
+        self.assertEqual(inserted, {'hello': 'mars', 'foo': 'bar'})
         self.assertIsInstance(inserted, dict)
         self.assertNotIsInstance(inserted, Context)
 
