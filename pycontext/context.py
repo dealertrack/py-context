@@ -142,6 +142,9 @@ class Context(Mapping):
         """
         return {}
 
+    def __dir__(self):
+        return dir(self.__class__) + list(self.keys())
+
     def __repr__(self):
         return repr(list(self.frames))
 
@@ -428,7 +431,7 @@ class Context(Mapping):
         with self._with_changed_keys(*chain(kwargs.items(), *(i.items() for i in args))):
             self.frames[0].update(*args, **kwargs)
 
-    def push(self, data):
+    def push(self, *args, **kwargs):
         """
         Push a new scope on the stack.
 
@@ -438,14 +441,20 @@ class Context(Mapping):
 
         :param data: the data dictionary to push on the context stack.
         """
-        if data is self:
-            raise ValueError(
-                'Cannot push context to itself.'
-            )
-        # For simplicity need to normalize the data to dict
-        # since otherwise data can be another context
-        # which will cause undesired recursion
-        data = dict(data)
+        data = {}
+
+        for i in args:
+            if i is self:
+                raise ValueError(
+                    'Cannot push context to itself.'
+                )
+
+            # For simplicity need to normalize the data to dict
+            # since otherwise data can be another context
+            # which will cause undesired recursion
+            data.update(dict(i))
+
+        data.update(kwargs)
 
         with self._with_changed_keys(*data.items()):
             self.frames.appendleft(data)
