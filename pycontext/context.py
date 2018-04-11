@@ -143,7 +143,7 @@ class Context(Mapping):
         return {}
 
     def __dir__(self):
-        return super(Context, self).__dir__() + list(self.keys())
+        return getattr(super(Context, self), '__dir__', list)() + list(self.keys())
 
     def __repr__(self):
         return repr(list(self.frames))
