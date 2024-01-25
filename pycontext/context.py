@@ -1,11 +1,8 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function, unicode_literals
 import copy
-from collections import Mapping, deque
+from collections import deque
+from collections.abc import Mapping
 from contextlib import contextmanager
 from itertools import chain
-
-import six
 
 from .signals import (
     context_initialized,
@@ -15,8 +12,7 @@ from .signals import (
 )
 
 
-@six.python_2_unicode_compatible
-class Missing(object):
+class Missing:
     """
     Helper object to distinguish missing keys from falsy keys.
 
@@ -48,7 +44,7 @@ class Missing(object):
 MISSING = Missing()
 
 
-class ContextPushPopContextManager(object):
+class ContextPushPopContextManager:
     """
     Helper class for using context manager when pushing
     values in :py:class:`.Context`.
@@ -124,7 +120,7 @@ class Context(Mapping):
         """
         Initialize the template context with the dictionary
         """
-        super(Context, self).__init__()
+        super().__init__()
         if context_data is None:
             context_data = kwargs
         assert isinstance(context_data, Mapping), "Must init with a Mapping instance"
@@ -191,7 +187,7 @@ class Context(Mapping):
         :param value: the variable value
         """
         try:
-            super(Context, self).__getattr__(key)
+            super().__getattr__(key)
         except AttributeError:
             value, frame = self._find(key)
             if frame is not None:
@@ -207,8 +203,7 @@ class Context(Mapping):
         return len(self.keys())
 
     def __iter__(self):
-        for k in self.keys():
-            yield k
+        yield from self.keys()
 
     def __setitem__(self, key, value):
         """
@@ -228,7 +223,7 @@ class Context(Mapping):
         :param value: the variable value
         """
         if key in self.__slots__:
-            super(Context, self).__setattr__(key, value)
+            super().__setattr__(key, value)
         else:
             self.__setitem__(key, value)
 

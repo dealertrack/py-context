@@ -13,3 +13,4 @@ Contributors
 ~~~~~~~~~~~~
 
 * Serkan Hosca - https://github.com/shosca
+* Kenneth Hill - https://github.com/steeltomato
