@@ -1,32 +1,22 @@
-==========
-Py-Context
-==========
+# Py-Context
 
-.. image:: https://badge.fury.io/py/py-context.png
-    :target: http://badge.fury.io/py/py-context
-
-.. image:: https://travis-ci.org/dealertrack/py-context.png?branch=master
-    :target: https://travis-ci.org/dealertrack/py-context
-
-.. image:: https://coveralls.io/repos/dealertrack/py-context/badge.png?branch=master
-    :target: https://coveralls.io/r/dealertrack/py-context?branch=master
+[![PyPI](https://img.shields.io/pypi/v/py-context?style=flat-square)](https://pypi.org/project/py-context/)
+[![CI](https://travis-ci.org/dealertrack/py-context.png?branch=master)](https://travis-ci.org/dealertrack/py-context)
+[![Coverage](https://coveralls.io/repos/dealertrack/py-context/badge.png?branch=master)](https://coveralls.io/r/dealertrack/py-context?branch=master)
 
 Python dict with stacked context data
 
 * Free software: MIT license
 * GitHub: https://github.com/dealertrack/py-context
 
-Installing
-----------
+## Installing
 
 You can install ``py-context`` using pip::
 
     $ pip install py-context
 
-Example
--------
+## Example
 
-::
 
     >>> context = Context({'user': 'Fred', 'city': 'Bedrock'})
     >>> context['user']
@@ -95,8 +85,7 @@ by sender classes, not instances::
     >>> class_context['foo'] = 'bar'
     foo bar <Missing>
 
-Testing
--------
+## Testing
 
 To run the tests you need to install testing requirements first::
 

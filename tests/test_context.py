@@ -1,10 +1,8 @@
-# -*- coding: utf-8 -*-
-from __future__ import absolute_import, print_function, unicode_literals
 import types
 import unittest
 from collections import deque
 
-import mock
+from unittest import mock
 
 from pycontext.context import MISSING, Context
 from pycontext.signals import (
@@ -16,7 +14,7 @@ from pycontext.signals import (
 
 class TestContext(unittest.TestCase):
     def setUp(self):
-        super(TestContext, self).setUp()
+        super().setUp()
         self.context = Context()
 
     def test_init(self):
@@ -46,7 +44,7 @@ class TestContext(unittest.TestCase):
             context.frames[0], data,
             'Initial frame context value should be an empty dict')
 
-        with self.assertRaisesRegexp(AssertionError, 'Must init with a Mapping instance'):
+        with self.assertRaisesRegex(AssertionError, 'Must init with a Mapping instance'):
             Context(5)
 
     def test_get_base_context(self):
