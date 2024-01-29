@@ -3,7 +3,7 @@ on: [pull_request]
 jobs:
   test:
     name: test py${{ matrix.py }}
-    runs-on: ubuntu
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
